@@ -1,5 +1,6 @@
-game.o: game.cpp game.h board.h types.h player.h
-game.h:
+game.o: game.cpp render.h board.h types.h game.h player.h
+render.h:
 board.h:
 types.h:
+game.h:
 player.h:

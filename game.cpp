@@ -1,8 +1,8 @@
-#include "game.h"
-#include <algorithm>
 #include "raylib.h"
 #include "render.h"
 #include "board.h"
+#include "game.h"
+#include <algorithm>
 
 
 int Game::rollDice() {
@@ -32,10 +32,10 @@ void Game::createSetupPhasePlacingOrder() {
     setupPlacingOrder = placingOrder;
 }
 
-static void handleSetupClick(Game& game, BoardLayout& layout, Board& board, Vector2 p) {
-    int player = game.setupTurn < (int)game.setupPlacingOrder.size() ? game.setupPlacingOrder[game.setupTurn] : game.setupPlacingOrder[2 * game.setupPlacingOrder.size() - 1 - game.setupTurn];
+void Game::handleSetupClick(BoardLayout& layout, Board& board, Vector2 p) {
+    int player = setupTurn < (int)setupPlacingOrder.size() ? setupPlacingOrder[setupTurn] : setupPlacingOrder[2 * setupPlacingOrder.size() - 1 - setupTurn];
 
-    if (game.setupStep == SetupStep::PlaceHouse) {
+    if (setupStep == SetupStep::PlaceHouse) {
         int c = cornerAt(layout, p);
         if (c < 0 || board.corners[c].owner != -1) return;
         std::array<int, 6> adjacentCorners = TILE_LINKS[CORNER_LINKS[c].tiles[0]].corners;  
@@ -43,25 +43,25 @@ static void handleSetupClick(Game& game, BoardLayout& layout, Board& board, Vect
             if (corner != c && board.corners[corner].owner != -1) return; // distance rule check
         } 
         board.corners[c].owner = player;
-        game.lastHouse = c;
-        game.setupStep = SetupStep::PlaceRoad;
+        lastHouse = c;
+        setupStep = SetupStep::PlaceRoad;
     }
     else { 
         int e = roadAt(layout, p);
         if (e < 0 || board.roads[e].owner != -1) return;
-        if (ROAD_LINKS[e].corners[0] != game.lastHouse && ROAD_LINKS[e].corners[1] != game.lastHouse) return; // must touch new house
+        if (ROAD_LINKS[e].corners[0] != lastHouse && ROAD_LINKS[e].corners[1] != lastHouse) return; // must touch new house
         board.roads[e].owner = player;
 
-        game.setupStep = SetupStep::PlaceHouse;
-        game.setupTurn++;
-        if(game.setupTurn >= 2 * (int)game.setupPlacingOrder.size() - 1) {
-            game.phase = Phase::Main;
+        setupStep = SetupStep::PlaceHouse;
+        setupTurn++;
+        if(setupTurn >= 2 * (int)setupPlacingOrder.size() - 1) {
+            phase = Phase::Main;
         }
     }
 }
 
 void handleClick(Game& game, BoardLayout& layout, Board& board, Vector2 p) {
     if (game.phase == Phase::Setup)
-        handleSetupClick(game, layout, board, p);
+        game.handleSetupClick(layout, board, p);
     // else: main game clicks
 }
