@@ -16,17 +16,19 @@ class Game {
 public:
     std::array<Player, 4> players;
     std::vector<int> setupPlacingOrder;
-    int currentPlayer = 0;
+    int currentPlayer;
     Phase phase = Phase::Setup;
     SetupStep setupStep = SetupStep::PlaceHouse;
     int setupTurn = 0;               
     int lastHouse = -1; 
+    bool robberyActive = false;
 
 
     int rollDice();
     void computeResourceProductions(const Board& board, int roll);
     void createSetupPhasePlacingOrder();
     void handleSetupClick(BoardLayout& layout, Board& board, Vector2 p);
+    void handleGameClick(BoardLayout& layout, Board& board, Vector2 p, int lastRoll);
 
 private:
     std::mt19937 rng{std::random_device{}()};

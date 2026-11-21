@@ -27,6 +27,7 @@ int main() {
     int lastRoll = 0;
     game.phase = Phase::Setup;
     game.createSetupPhasePlacingOrder();
+    game.currentPlayer = game.setupPlacingOrder[0];
 
     while (!WindowShouldClose() && game.phase == Phase::Setup) {
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -57,27 +58,21 @@ int main() {
         EndDrawing();
     }
 
+    lastRoll = game.rollDice();
+    game.computeResourceProductions(board, lastRoll);
+
     while (!WindowShouldClose() && game.phase == Phase::Main) {
         // ---- input ----
         if (IsKeyPressed(KEY_D))   showIndices = !showIndices;
-        if (IsKeyPressed(KEY_TAB)) game.currentPlayer = (game.currentPlayer + 1) % 4;
-        if (IsKeyPressed(KEY_SPACE)) {
+        if (IsKeyPressed(KEY_TAB)) {
+            game.robberyActive = false;
+            game.currentPlayer = (game.currentPlayer + 1) % 4;
             lastRoll = game.rollDice();
             game.computeResourceProductions(board, lastRoll);
         }
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Vector2 m = GetMousePosition();
-            int me = game.currentPlayer;
-            if (int c = cornerAt(layout, m); c != NONE) {           // corners first: they overlap tiles/roads
-                CornerState& cs = board.corners[c];
-                if (cs.building == BuildingType::None)
-                { cs.building = BuildingType::Settlement; cs.owner = me; }
-                else if (cs.building == BuildingType::Settlement && cs.owner == me) cs.building = BuildingType::City;
-            } else if (int r = roadAt(layout, m); r != NONE) {
-                if (board.roads[r].owner == NONE) board.roads[r].owner = me;
-            } else if (int t = tileAt(layout, m); t != NONE) {
-                board.robberTile = t;
-            }
+            game.handleGameClick(layout, board, m, lastRoll);
         }
 
         // ---- draw ----

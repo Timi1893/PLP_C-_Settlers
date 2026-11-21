@@ -33,16 +33,17 @@ void Game::createSetupPhasePlacingOrder() {
 }
 
 void Game::handleSetupClick(BoardLayout& layout, Board& board, Vector2 p) {
-    int player = setupTurn < (int)setupPlacingOrder.size() ? setupPlacingOrder[setupTurn] : setupPlacingOrder[2 * setupPlacingOrder.size() - 1 - setupTurn];
 
     if (setupStep == SetupStep::PlaceHouse) {
         int c = cornerAt(layout, p);
         if (c < 0 || board.corners[c].owner != -1) return;
-        std::array<int, 6> adjacentCorners = TILE_LINKS[CORNER_LINKS[c].tiles[0]].corners;  
-        for (int corner : adjacentCorners ) {
-            if (corner != c && board.corners[corner].owner != -1) return; // distance rule check
-        } 
-        board.corners[c].owner = player;
+        for (int r : CORNER_LINKS[c].roads) {
+            if (r == NONE) continue;
+            int other = ROAD_LINKS[r].corners[0] == c ? ROAD_LINKS[r].corners[1] : ROAD_LINKS[r].corners[0];
+            if (board.corners[other].owner != NONE) return;   // distance rule
+        }
+        board.corners[c].owner = currentPlayer;
+        board.corners[c].building = BuildingType::Settlement;
         lastHouse = c;
         setupStep = SetupStep::PlaceRoad;
     }
@@ -50,18 +51,108 @@ void Game::handleSetupClick(BoardLayout& layout, Board& board, Vector2 p) {
         int e = roadAt(layout, p);
         if (e < 0 || board.roads[e].owner != -1) return;
         if (ROAD_LINKS[e].corners[0] != lastHouse && ROAD_LINKS[e].corners[1] != lastHouse) return; // must touch new house
-        board.roads[e].owner = player;
+        board.roads[e].owner = currentPlayer;
 
         setupStep = SetupStep::PlaceHouse;
         setupTurn++;
-        if(setupTurn >= 2 * (int)setupPlacingOrder.size() - 1) {
+        currentPlayer = setupTurn < (int)setupPlacingOrder.size() ? setupPlacingOrder[setupTurn] : setupPlacingOrder[2 * (int)setupPlacingOrder.size() - 1 - setupTurn];
+        if(setupTurn >= 2 * (int)setupPlacingOrder.size()) {
             phase = Phase::Main;
+            currentPlayer = 0;
         }
     }
+
 }
 
-void handleClick(Game& game, BoardLayout& layout, Board& board, Vector2 p) {
-    if (game.phase == Phase::Setup)
-        game.handleSetupClick(layout, board, p);
-    // else: main game clicks
+void Game::handleGameClick(BoardLayout& layout, Board& board, Vector2 p, int lastRoll) {
+    Player& player = players[currentPlayer];
+
+    // --- corner ---
+    if ( int c = cornerAt(layout, p); c != NONE) {
+        CornerState& corner = board.corners[c];
+
+        // --- place settlement ---
+        if (corner.owner == NONE && corner.building == BuildingType::None) {
+            for (int r : CORNER_LINKS[c].roads) {
+                if (r == NONE) continue;
+                int other = ROAD_LINKS[r].corners[0] == c ? ROAD_LINKS[r].corners[1] : ROAD_LINKS[r].corners[0];
+                if (board.corners[other].owner != NONE) return;   // distance rule
+            }
+            for (int r : CORNER_LINKS[c].roads) {
+                if (r == NONE) continue;
+                if (board.roads[r].owner == currentPlayer) goto settlementPlacementAllowed;
+            }
+            return; // must touch player's road
+
+            settlementPlacementAllowed:
+            if (player.resources[Resource::Wood] < 1 || player.resources[Resource::Brick] < 1 || player.resources[Resource::Wool] < 1 || player.resources[Resource::Grain] < 1) return;
+            player.resources[Resource::Wood]--;
+            player.resources[Resource::Brick]--;
+            player.resources[Resource::Wool]--;
+            player.resources[Resource::Grain]--;
+            corner.owner = currentPlayer;
+            corner.building = BuildingType::Settlement;
+        }
+
+        // --- upgrade to city ---
+        else if (corner.owner == currentPlayer && corner.building == BuildingType::Settlement) {
+            if (player.resources[Resource::Grain] < 2 || player.resources[Resource::Ore] < 3) return;
+            player.resources[Resource::Grain] -= 2;
+            player.resources[Resource::Ore] -= 3;
+            corner.building = BuildingType::City;
+        }
+        return;
+    }
+
+    // --- road ---
+    else if (int r = roadAt(layout, p); r != NONE) {
+        RoadState& road = board.roads[r];
+        if (road.owner == NONE) {
+            if (board.corners[ROAD_LINKS[r].corners[0]].owner != currentPlayer && board.corners[ROAD_LINKS[r].corners[1]].owner != currentPlayer) {
+                for(int c : ROAD_LINKS[r].corners) {
+                    for (int rr : CORNER_LINKS[c].roads) {
+                        if (rr == NONE) continue;
+                        if (board.roads[rr].owner == currentPlayer) goto roadPlacementAllowed;
+                    }
+                }
+                return;
+            } // must touch player's building
+
+            roadPlacementAllowed:
+            if (player.resources[Resource::Wood] < 1 || player.resources[Resource::Brick] < 1) return;
+            player.resources[Resource::Wood]--;
+            player.resources[Resource::Brick]--;
+            road.owner = currentPlayer;
+        }
+    }
+
+    if (lastRoll == 7 && !robberyActive) {
+        if (int t = tileAt(layout, p); t != NONE && t != board.robberTile) {
+            robberyActive = true;
+            board.robberTile = t;
+        }
+    }
+
+    if (robberyActive) {
+        int c = cornerAt(layout, p);
+        if (c != NONE) {
+            CornerState& corner = board.corners[c];
+            if (corner.owner != NONE && corner.owner != currentPlayer) {
+                Player& victim = players[corner.owner];
+                if (!victim.resources.empty()) {
+                    std::vector<Resource> victimResources;
+                    for (const auto& [res, count] : victim.resources) {
+                        for (int i = 0; i < count; ++i) {
+                            victimResources.push_back(res);
+                        }
+                    }
+                    std::uniform_int_distribution<int> dist(0, victimResources.size() - 1);
+                    Resource stolenResource = victimResources[dist(rng)];
+                    victim.resources[stolenResource]--;
+                    player.resources[stolenResource]++;
+                }
+                robberyActive = false;
+            }
+        }
+    }
 }
