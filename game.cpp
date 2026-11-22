@@ -44,6 +44,13 @@ void Game::handleSetupClick(BoardLayout& layout, Board& board, Vector2 p) {
         }
         board.corners[c].owner = currentPlayer;
         board.corners[c].building = BuildingType::Settlement;
+        if (setupTurn >= (int)setupPlacingOrder.size()) {
+            for (int t : CORNER_LINKS[c].tiles) {
+                if (t == NONE) continue;
+                Resource res = board.tiles[t].type;
+                if (res != Resource::Desert) players[currentPlayer].resources[res]++;
+            }
+        }
         lastHouse = c;
         setupStep = SetupStep::PlaceRoad;
     }
@@ -66,6 +73,45 @@ void Game::handleSetupClick(BoardLayout& layout, Board& board, Vector2 p) {
 
 void Game::handleGameClick(BoardLayout& layout, Board& board, Vector2 p, int lastRoll) {
     Player& player = players[currentPlayer];
+
+    // --- robber: must be resolved before anything else this turn ---
+    if (lastRoll == 7 && !robberMoved) {
+        int t = tileAt(layout, p);
+        if (t == NONE || t == board.robberTile) return;
+        board.robberTile = t;
+        robberMoved = true;
+
+        // only enter steal mode if someone on this tile actually has cards
+        robberyActive = false;
+        for (int c : TILE_LINKS[t].corners) {
+            int o = board.corners[c].owner;
+            if (o == NONE || o == currentPlayer) continue;
+            for (const auto& [res, n] : players[o].resources)
+                if (n > 0) robberyActive = true;
+        }
+        return;
+    }
+
+    if (robberyActive) {
+        int c = cornerAt(layout, p);
+        if (c == NONE) return;
+        const auto& tc = TILE_LINKS[board.robberTile].corners;
+        if (std::find(tc.begin(), tc.end(), c) == tc.end()) return;   // must be on robber tile
+        int o = board.corners[c].owner;
+        if (o == NONE || o == currentPlayer) return;
+
+        std::vector<Resource> pool;
+        for (const auto& [res, n] : players[o].resources)
+            for (int i = 0; i < n; ++i) pool.push_back(res);
+        if (pool.empty()) return;                                     // pick someone with cards
+
+        std::uniform_int_distribution<int> dist(0, (int)pool.size() - 1);
+        Resource stolen = pool[dist(rng)];
+        players[o].resources[stolen]--;
+        player.resources[stolen]++;
+        robberyActive = false;
+        return;
+    }
 
     // --- corner ---
     if ( int c = cornerAt(layout, p); c != NONE) {
@@ -125,34 +171,40 @@ void Game::handleGameClick(BoardLayout& layout, Board& board, Vector2 p, int las
             road.owner = currentPlayer;
         }
     }
+}
 
-    if (lastRoll == 7 && !robberyActive) {
-        if (int t = tileAt(layout, p); t != NONE && t != board.robberTile) {
-            robberyActive = true;
-            board.robberTile = t;
+void Game::handleTradeClick(Vector2 o, Vector2 p) {
+    Player& player = players[currentPlayer];
+    
+    if (tradeRequestResource == Resource::Desert) {
+        // Select a resource to offer
+        if (woodAt(o, p)) {
+            tradeOfferResource = Resource::Wood;
+        } else if (brickAt(o, p)) {
+            tradeOfferResource = Resource::Brick;
+        } else if (woolAt(o, p)) {
+            tradeOfferResource = Resource::Wool;
+        } else if (grainAt(o, p)) {
+            tradeOfferResource = Resource::Grain;
+        } else if (oreAt(o, p)) {
+            tradeOfferResource = Resource::Ore;
         }
-    }
-
-    if (robberyActive) {
-        int c = cornerAt(layout, p);
-        if (c != NONE) {
-            CornerState& corner = board.corners[c];
-            if (corner.owner != NONE && corner.owner != currentPlayer) {
-                Player& victim = players[corner.owner];
-                if (!victim.resources.empty()) {
-                    std::vector<Resource> victimResources;
-                    for (const auto& [res, count] : victim.resources) {
-                        for (int i = 0; i < count; ++i) {
-                            victimResources.push_back(res);
-                        }
-                    }
-                    std::uniform_int_distribution<int> dist(0, victimResources.size() - 1);
-                    Resource stolenResource = victimResources[dist(rng)];
-                    victim.resources[stolenResource]--;
-                    player.resources[stolenResource]++;
-                }
-                robberyActive = false;
-            }
+    } else {
+        // Select a resource to request
+        if (woodAt(o, p)) {
+            tradeRequestResource = Resource::Wood;
+        } else if (brickAt(o, p)) {
+            tradeRequestResource = Resource::Brick;
+        } else if (woolAt(o, p)) {
+            tradeRequestResource = Resource::Wool;
+        } else if (grainAt(o, p)) {
+            tradeRequestResource = Resource::Grain;
+        } else if (oreAt(o, p)) {       
+            tradeRequestResource = Resource::Ore;
         }
+        player.resources[tradeOfferResource] -= 4;
+        player.resources[tradeRequestResource] += 1;
+        tradeActive = false;
+        return;
     }
 }

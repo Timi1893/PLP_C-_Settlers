@@ -23,6 +23,8 @@ int main() {
     for (int i = 0; i < 4; i++) { game.players[i].id = i; game.players[i].name = TextFormat("Player %d", i + 1); }
 
     BoardLayout layout = computeLayout({430, screenH / 2.f}, 72);
+
+    const Vector2 resourceBtnOrigin = {860, 610}; 
     bool showIndices = false;
     int lastRoll = 0;
     game.phase = Phase::Setup;
@@ -30,6 +32,7 @@ int main() {
     game.currentPlayer = game.setupPlacingOrder[0];
 
     while (!WindowShouldClose() && game.phase == Phase::Setup) {
+        if (IsKeyPressed(KEY_D))   showIndices = !showIndices;
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Vector2 m = GetMousePosition();
             game.handleSetupClick(layout, board, m);
@@ -64,21 +67,40 @@ int main() {
     while (!WindowShouldClose() && game.phase == Phase::Main) {
         // ---- input ----
         if (IsKeyPressed(KEY_D))   showIndices = !showIndices;
+        if (IsKeyPressed(KEY_T)) game.tradeActive = !game.tradeActive;
         if (IsKeyPressed(KEY_TAB)) {
             game.robberyActive = false;
+            game.robberMoved = false;
             game.currentPlayer = (game.currentPlayer + 1) % 4;
             lastRoll = game.rollDice();
             game.computeResourceProductions(board, lastRoll);
+            if (lastRoll == 7) {
+                for (int p = 0; p < 4; p++) {
+                    Player& pl = game.players[p];
+                    int totalCards = 0;
+                    for (const auto& [res, n] : pl.resources) totalCards += n;
+                    if (totalCards > 7) {
+                        for (const auto& [res, n] : pl.resources) {
+                            if (n > 0) pl.resources[res] /= 2;
+                        }
+                    }
+                }
+            }
         }
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             Vector2 m = GetMousePosition();
-            game.handleGameClick(layout, board, m, lastRoll);
+            if (game.tradeActive) {
+                game.handleTradeClick(resourceBtnOrigin, m);
+            } else {
+                game.handleGameClick(layout, board, m, lastRoll);
+            }
         }
 
         // ---- draw ----
         BeginDrawing();
         ClearBackground({22, 30, 40, 255});
         drawBoard(board, layout, showIndices);
+        drawResourceButtons(resourceBtnOrigin);
 
         // hover highlight
         Vector2 m = GetMousePosition();
@@ -102,7 +124,8 @@ int main() {
             }
             y += 14;
         }
-        DrawText("SPACE roll  TAB next player  D indices", 20, screenH - 30, 18, GRAY);
+        DrawText("TAB end move  T trade  D indices", 20, screenH - 30, 18, GRAY);
+        if (game.tradeActive) DrawText("TRADING", 860, 680, 24, YELLOW);
         EndDrawing();
     }
     CloseWindow();

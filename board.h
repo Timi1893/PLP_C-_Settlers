@@ -18,7 +18,7 @@ struct RoadLinks {
 
 inline constexpr std::array<TileLinks, NUM_TILES> TILE_LINKS = {{
     {{  0,  1,  2, 30, 29, 28 }},   // tile  1
-    {{  2,  3,  4, 32, 31, 30 }},   // tile  2
+    {{  2,  3,  4, 32, 31, 30 }},   // tile  2d
     {{  4,  5,  6,  7, 33, 32 }},   // tile  3
     {{ 33,  7,  8,  9, 35, 34 }},   // tile  4
     {{ 35,  9, 10, 11, 12, 36 }},   // tile  5

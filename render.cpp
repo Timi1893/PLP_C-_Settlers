@@ -32,6 +32,12 @@ Color resourceColor(Resource r) {
     }
 }
 
+constexpr float BTN_SIZE = 44, BTN_GAP = 8;
+
+Rectangle resourceButtonRect(Vector2 origin, Resource r) {
+    return { origin.x + static_cast<int>(r) * (BTN_SIZE + BTN_GAP), origin.y, BTN_SIZE, BTN_SIZE };
+}
+
 void drawCenteredText(const char* text, Vector2 pos, int fontSize, Color color) {
     int w = MeasureText(text, fontSize);
     DrawText(text, (int)(pos.x - w / 2.f), (int)(pos.y - fontSize / 2.f), fontSize, color);
@@ -148,3 +154,21 @@ const char* resourceName(Resource r) {
     static const char* names[] = {"Wood", "Brick", "Wool", "Grain", "Ore", "Desert"};
     return names[static_cast<int>(r)];
 }
+
+void drawResourceButtons(Vector2 origin) {
+    Vector2 m = GetMousePosition();
+    for (int i = 0; i < 5; i++) {
+        Resource r = static_cast<Resource>(i);
+        Rectangle rect = resourceButtonRect(origin, r);
+        DrawRectangleRec(rect, resourceColor(r));
+        DrawRectangleLinesEx(rect, 2, CheckCollisionPointRec(m, rect) ? YELLOW : BLACK);  // hover
+        int w = MeasureText(resourceName(r), 12);
+        DrawText(resourceName(r), (int)(rect.x + (BTN_SIZE - w) / 2), (int)(rect.y + BTN_SIZE + 4), 12, LIGHTGRAY);
+    }
+}
+
+bool woodAt (Vector2 o, Vector2 p) { return CheckCollisionPointRec(p, resourceButtonRect(o, Resource::Wood));  }
+bool brickAt(Vector2 o, Vector2 p) { return CheckCollisionPointRec(p, resourceButtonRect(o, Resource::Brick)); }
+bool woolAt (Vector2 o, Vector2 p) { return CheckCollisionPointRec(p, resourceButtonRect(o, Resource::Wool));  }
+bool grainAt(Vector2 o, Vector2 p) { return CheckCollisionPointRec(p, resourceButtonRect(o, Resource::Grain)); }
+bool oreAt  (Vector2 o, Vector2 p) { return CheckCollisionPointRec(p, resourceButtonRect(o, Resource::Ore));   }
