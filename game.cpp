@@ -270,7 +270,7 @@ void Game::handleGameClick(BoardLayout& layout, Board& board, Vector2 p, int las
 void Game::handleTradeClick(Vector2 o, Vector2 p) {
     Player& player = players[currentPlayer];
     
-    if (tradeRequestResource == Resource::Desert) {
+    if (tradeRequestResource == Resource::None) {
         // Select a resource to request
         if (woodAt(o, p)) {
             tradeRequestResource = Resource::Wood;
@@ -298,7 +298,7 @@ void Game::handleTradeClick(Vector2 o, Vector2 p) {
         }
 
         if (player.resources[tradeOfferResource] < 4) {
-            tradeOfferResource = Resource::Desert; // Reset the offer
+            tradeOfferResource = Resource::None; // Reset the offer
             showError = true;
             errorMessage = "Not enough resources to offer for trade.";
             return;

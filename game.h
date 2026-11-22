@@ -31,8 +31,8 @@ public:
     bool showError = false; 
     std::string errorMessage;
 
-    Resource tradeRequestResource = Resource::Desert;
-    Resource tradeOfferResource = Resource::Desert;
+    Resource tradeRequestResource = Resource::None;
+    Resource tradeOfferResource = Resource::None;
 
 
 

@@ -61,8 +61,9 @@ int main() {
         }
         DrawText("D indices", 20, screenH - 30, 18, GRAY);
         if (game.showError) {
-            int res = GuiMessageBox({375, 330, 400, 140}, "Error", game.errorMessage.c_str(), "OK");
-            if (res >= 0) game.showError = false;   // OK or the X was clicked
+            int btn = -1;
+            if (GuiMessageBox({375, 330, 400, 140}, "Error", game.errorMessage.c_str(), "OK", &btn) == RESULT_PRESSED)
+                game.showError = false;   // OK (btn = 1) or X (btn = 0)
         }
         EndDrawing();
     }
@@ -154,8 +155,9 @@ int main() {
         DrawText("TAB end move  T trade  D indices", 20, screenH - 30, 18, GRAY);
         if (game.tradeActive) DrawText("TRADING", 860, 680, 24, YELLOW);
         if (game.showError) {
-            int res = GuiMessageBox({375, 330, 400, 140}, "Error", game.errorMessage.c_str(), "OK");
-            if (res >= 0) game.showError = false;   // OK or the X was clicked
+            int btn = -1;
+            if (GuiMessageBox({375, 330, 400, 140}, "Error", game.errorMessage.c_str(), "OK", &btn) == RESULT_PRESSED)
+                game.showError = false;   // OK (btn = 1) or X (btn = 0)
         }
         EndDrawing();
     }
