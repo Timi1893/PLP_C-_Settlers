@@ -28,6 +28,9 @@ public:
     bool robberMoved = false;
     bool tradeActive = false;
 
+    bool showError = false; 
+    std::string errorMessage;
+
     Resource tradeRequestResource = Resource::Desert;
     Resource tradeOfferResource = Resource::Desert;
 

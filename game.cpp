@@ -57,11 +57,19 @@ void Game::handleSetupClick(BoardLayout& layout, Board& board, Vector2 p) {
 
     if (setupStep == SetupStep::PlaceHouse) {
         int c = cornerAt(layout, p);
-        if (c < 0 || board.corners[c].owner != -1) return;
+        if (c < 0 || board.corners[c].owner != -1) {
+            showError = true;
+            errorMessage = "Invalid corner selection for settlement placement.";
+            return;
+        };
         for (int r : CORNER_LINKS[c].roads) {
             if (r == NONE) continue;
             int other = ROAD_LINKS[r].corners[0] == c ? ROAD_LINKS[r].corners[1] : ROAD_LINKS[r].corners[0];
-            if (board.corners[other].owner != NONE) return;   // distance rule
+            if (board.corners[other].owner != NONE) {
+                showError = true;
+                errorMessage = "Cannot place settlement here due to distance rule.";
+                return;
+            };   // distance rule
         }
         board.corners[c].owner = currentPlayer;
         board.corners[c].building = BuildingType::Settlement;
@@ -78,8 +86,16 @@ void Game::handleSetupClick(BoardLayout& layout, Board& board, Vector2 p) {
     }
     else { 
         int e = roadAt(layout, p);
-        if (e < 0 || board.roads[e].owner != -1) return;
-        if (ROAD_LINKS[e].corners[0] != lastHouse && ROAD_LINKS[e].corners[1] != lastHouse) return; // must touch new house
+        if (e < 0 || board.roads[e].owner != -1) {
+            showError = true;
+            errorMessage = "Invalid road selection for road placement.";
+            return;
+        };
+        if (ROAD_LINKS[e].corners[0] != lastHouse && ROAD_LINKS[e].corners[1] != lastHouse) {
+            showError = true;
+            errorMessage = "Road must touch the newly placed settlement.";
+            return;
+        }
         board.roads[e].owner = currentPlayer;
         players[currentPlayer].buildings[BuildingType::Road]--;
 
@@ -100,7 +116,11 @@ void Game::handleGameClick(BoardLayout& layout, Board& board, Vector2 p, int las
     // --- robber: must be resolved before anything else this turn ---
     if (lastRoll == 7 && !robberMoved) {
         int t = tileAt(layout, p);
-        if (t == NONE || t == board.robberTile) return;
+        if (t == NONE || t == board.robberTile) {
+            showError = true;
+            errorMessage = "Invalid tile selection for robber placement.";
+            return;
+        }
         board.robberTile = t;
         robberMoved = true;
 
@@ -117,16 +137,32 @@ void Game::handleGameClick(BoardLayout& layout, Board& board, Vector2 p, int las
 
     if (robberyActive) {
         int c = cornerAt(layout, p);
-        if (c == NONE) return;
+        if (c == NONE) {
+            showError = true;
+            errorMessage = "Invalid corner selection for robbery.";
+            return;
+        }
         const auto& tc = TILE_LINKS[board.robberTile].corners;
-        if (std::find(tc.begin(), tc.end(), c) == tc.end()) return;   // must be on robber tile
+        if (std::find(tc.begin(), tc.end(), c) == tc.end()) {
+            showError = true;
+            errorMessage = "Corner must be on the robber's tile.";
+            return;
+        }
         int o = board.corners[c].owner;
-        if (o == NONE || o == currentPlayer) return;
+        if (o == NONE || o == currentPlayer) {
+            showError = true;
+            errorMessage = "Cannot rob from an empty corner or your own corner.";
+            return;
+        }
 
         std::vector<Resource> pool;
         for (const auto& [res, n] : players[o].resources)
             for (int i = 0; i < n; ++i) pool.push_back(res);
-        if (pool.empty()) return;                                     // pick someone with cards
+        if (pool.empty()) {
+            showError = true;
+            errorMessage = "No cards to rob.";
+            return;
+        }
 
         std::uniform_int_distribution<int> dist(0, (int)pool.size() - 1);
         Resource stolen = pool[dist(rng)];
@@ -145,17 +181,31 @@ void Game::handleGameClick(BoardLayout& layout, Board& board, Vector2 p, int las
             for (int r : CORNER_LINKS[c].roads) {
                 if (r == NONE) continue;
                 int other = ROAD_LINKS[r].corners[0] == c ? ROAD_LINKS[r].corners[1] : ROAD_LINKS[r].corners[0];
-                if (board.corners[other].owner != NONE) return;   // distance rule
+                if (board.corners[other].owner != NONE) {
+                    showError = true;
+                    errorMessage = "Cannot place settlement here due to distance rule.";
+                    return;
+                }
             }
             for (int r : CORNER_LINKS[c].roads) {
                 if (r == NONE) continue;
                 if (board.roads[r].owner == currentPlayer) goto settlementPlacementAllowed;
             }
+            showError = true;
+            errorMessage = "Must touch player's road.";
             return; // must touch player's road
 
             settlementPlacementAllowed:
-            if (player.resources[Resource::Wood] < 1 || player.resources[Resource::Brick] < 1 || player.resources[Resource::Wool] < 1 || player.resources[Resource::Grain] < 1) return;
-            if (player.buildings[BuildingType::Settlement] <= 0) return;
+            if (player.resources[Resource::Wood] < 1 || player.resources[Resource::Brick] < 1 || player.resources[Resource::Wool] < 1 || player.resources[Resource::Grain] < 1) {
+                showError = true;
+                errorMessage = "Not enough resources to place settlement.";
+                return;
+            }
+            if (player.buildings[BuildingType::Settlement] <= 0) {
+                showError = true;
+                errorMessage = "No settlements available.";
+                return;
+            }
             player.resources[Resource::Wood]--;
             player.resources[Resource::Brick]--;
             player.resources[Resource::Wool]--;
@@ -167,8 +217,16 @@ void Game::handleGameClick(BoardLayout& layout, Board& board, Vector2 p, int las
 
         // --- upgrade to city ---
         else if (corner.owner == currentPlayer && corner.building == BuildingType::Settlement) {
-            if (player.resources[Resource::Grain] < 2 || player.resources[Resource::Ore] < 3) return;
-            if (player.buildings[BuildingType::City] <= 0) return;
+            if (player.resources[Resource::Grain] < 2 || player.resources[Resource::Ore] < 3) {
+                showError = true;
+                errorMessage = "Not enough resources to upgrade to city.";
+                return;
+            }
+            if (player.buildings[BuildingType::City] <= 0) {
+                showError = true;
+                errorMessage = "No cities available.";
+                return;
+            }
             player.resources[Resource::Grain] -= 2;
             player.resources[Resource::Ore] -= 3;
             corner.building = BuildingType::City;
@@ -189,11 +247,17 @@ void Game::handleGameClick(BoardLayout& layout, Board& board, Vector2 p, int las
                         if (board.roads[rr].owner == currentPlayer) goto roadPlacementAllowed;
                     }
                 }
+                showError = true;
+                errorMessage = "Road must touch player's building.";
                 return;
             } // must touch player's building
 
             roadPlacementAllowed:
-            if (player.resources[Resource::Wood] < 1 || player.resources[Resource::Brick] < 1) return;
+            if (player.resources[Resource::Wood] < 1 || player.resources[Resource::Brick] < 1) {
+                showError = true;
+                errorMessage = "Not enough resources to place road.";
+                return;
+            }
             if (player.buildings[BuildingType::Road] <= 0) return;
             player.resources[Resource::Wood]--;
             player.resources[Resource::Brick]--;
@@ -235,6 +299,8 @@ void Game::handleTradeClick(Vector2 o, Vector2 p) {
 
         if (player.resources[tradeOfferResource] < 4) {
             tradeOfferResource = Resource::Desert; // Reset the offer
+            showError = true;
+            errorMessage = "Not enough resources to offer for trade.";
             return;
         }
         player.resources[tradeOfferResource] -= 4;

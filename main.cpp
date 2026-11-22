@@ -1,3 +1,5 @@
+#define RAYGUI_IMPLEMENTATION   // in exactly ONE .cpp file
+#include "raygui.h"
 #include "raylib.h"
 #include "board.h"
 #include "game.h"
@@ -58,6 +60,10 @@ int main() {
             y += 26;
         }
         DrawText("D indices", 20, screenH - 30, 18, GRAY);
+        if (game.showError) {
+            int res = GuiMessageBox({375, 330, 400, 140}, "Error", game.errorMessage.c_str(), "OK");
+            if (res >= 0) game.showError = false;   // OK or the X was clicked
+        }
         EndDrawing();
     }
 
@@ -79,6 +85,7 @@ int main() {
             game.tradeRequestResource = Resource::Desert;
             game.tradeOfferResource = Resource::Desert;
             game.currentPlayer = (game.currentPlayer + 1) % 4;
+            game.computeLongestRoad(board);
             game.computeVictoryPoints(board);
             for (int p = 0; p < 4; p++) {
                 if (game.players[p].points >= 10) {
@@ -146,6 +153,10 @@ int main() {
         }
         DrawText("TAB end move  T trade  D indices", 20, screenH - 30, 18, GRAY);
         if (game.tradeActive) DrawText("TRADING", 860, 680, 24, YELLOW);
+        if (game.showError) {
+            int res = GuiMessageBox({375, 330, 400, 140}, "Error", game.errorMessage.c_str(), "OK");
+            if (res >= 0) game.showError = false;   // OK or the X was clicked
+        }
         EndDrawing();
     }
 
@@ -158,7 +169,6 @@ int main() {
         DrawText("Press ESC to exit", 860, 60, 20, GRAY);
         EndDrawing();
     }
-
 
     CloseWindow();
 }
