@@ -4,6 +4,27 @@
 #include "game.h"
 #include <algorithm>
 
+namespace {
+// longest path starting at `corner`, using each road at most once
+    int longestFrom(const Board& b, int player, int corner, std::array<bool, NUM_ROADS>& used) {
+        int best = 0;
+        for (int r : CORNER_LINKS[corner].roads) {
+            if (r == NONE || used[r] || b.roads[r].owner != player) continue;
+            int next = ROAD_LINKS[r].corners[0] == corner ? ROAD_LINKS[r].corners[1] : ROAD_LINKS[r].corners[0];
+
+            used[r] = true;
+            int len = 1;
+            int o = b.corners[next].owner;
+            if (o == NONE || o == player)                  // opponent building breaks the road
+                len += longestFrom(b, player, next, used);
+            used[r] = false;                               // backtrack
+
+            best = std::max(best, len);
+        }
+        return best;
+    }
+}
+
 
 int Game::rollDice() {
     std::uniform_int_distribution<int> d(1, 6);
@@ -44,6 +65,7 @@ void Game::handleSetupClick(BoardLayout& layout, Board& board, Vector2 p) {
         }
         board.corners[c].owner = currentPlayer;
         board.corners[c].building = BuildingType::Settlement;
+        players[currentPlayer].buildings[BuildingType::Settlement]--;
         if (setupTurn >= (int)setupPlacingOrder.size()) {
             for (int t : CORNER_LINKS[c].tiles) {
                 if (t == NONE) continue;
@@ -59,6 +81,7 @@ void Game::handleSetupClick(BoardLayout& layout, Board& board, Vector2 p) {
         if (e < 0 || board.roads[e].owner != -1) return;
         if (ROAD_LINKS[e].corners[0] != lastHouse && ROAD_LINKS[e].corners[1] != lastHouse) return; // must touch new house
         board.roads[e].owner = currentPlayer;
+        players[currentPlayer].buildings[BuildingType::Road]--;
 
         setupStep = SetupStep::PlaceHouse;
         setupTurn++;
@@ -132,20 +155,25 @@ void Game::handleGameClick(BoardLayout& layout, Board& board, Vector2 p, int las
 
             settlementPlacementAllowed:
             if (player.resources[Resource::Wood] < 1 || player.resources[Resource::Brick] < 1 || player.resources[Resource::Wool] < 1 || player.resources[Resource::Grain] < 1) return;
+            if (player.buildings[BuildingType::Settlement] <= 0) return;
             player.resources[Resource::Wood]--;
             player.resources[Resource::Brick]--;
             player.resources[Resource::Wool]--;
             player.resources[Resource::Grain]--;
             corner.owner = currentPlayer;
             corner.building = BuildingType::Settlement;
+            player.buildings[BuildingType::Settlement]--;
         }
 
         // --- upgrade to city ---
         else if (corner.owner == currentPlayer && corner.building == BuildingType::Settlement) {
             if (player.resources[Resource::Grain] < 2 || player.resources[Resource::Ore] < 3) return;
+            if (player.buildings[BuildingType::City] <= 0) return;
             player.resources[Resource::Grain] -= 2;
             player.resources[Resource::Ore] -= 3;
             corner.building = BuildingType::City;
+            player.buildings[BuildingType::Settlement]++;
+            player.buildings[BuildingType::City]--;
         }
         return;
     }
@@ -166,9 +194,11 @@ void Game::handleGameClick(BoardLayout& layout, Board& board, Vector2 p, int las
 
             roadPlacementAllowed:
             if (player.resources[Resource::Wood] < 1 || player.resources[Resource::Brick] < 1) return;
+            if (player.buildings[BuildingType::Road] <= 0) return;
             player.resources[Resource::Wood]--;
             player.resources[Resource::Brick]--;
             road.owner = currentPlayer;
+            player.buildings[BuildingType::Road]--;
         }
     }
 }
@@ -212,4 +242,39 @@ void Game::handleTradeClick(Vector2 o, Vector2 p) {
         tradeActive = false;
         return;
     }
+}
+
+void Game::computeVictoryPoints(Board& board) {
+    for (Player& player : players) {
+        player.points = 0;
+        for (const CornerState& corner : board.corners) {
+            if (corner.owner == player.id) {
+                if (corner.building == BuildingType::Settlement) {
+                    player.points += 1;
+                } else if (corner.building == BuildingType::City) {
+                    player.points += 2;
+                }
+            }
+        }
+        if (player.id == playerWithLongestRoad) {
+            player.points += 2;
+        }
+    }
+}
+
+void Game::computeLongestRoad(Board& board) {
+    std::array<int, 4> length{};
+    for (int p = 0; p < 4; ++p) {
+        std::array<bool, NUM_ROADS> used{};
+        for (int c = 0; c < NUM_CORNERS; ++c)
+            length[p] = std::max(length[p], longestFrom(board, p, c, used));
+    }
+
+    // holder loses it if their road got cut below 5
+    if (playerWithLongestRoad != NONE && length[playerWithLongestRoad] < 5)
+        playerWithLongestRoad = NONE;
+
+    int best = playerWithLongestRoad == NONE ? 4 : length[playerWithLongestRoad];
+    for (int p = 0; p < 4; ++p)
+        if (length[p] > best) { best = length[p]; playerWithLongestRoad = p; }
 }

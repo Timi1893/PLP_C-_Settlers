@@ -18,6 +18,8 @@ public:
     std::array<Player, 4> players;
     std::vector<int> setupPlacingOrder;
     int currentPlayer;
+    int winningPlayer = -1;
+    int playerWithLongestRoad = -1;
     Phase phase = Phase::Setup;
     SetupStep setupStep = SetupStep::PlaceHouse;
     int setupTurn = 0;               
@@ -30,12 +32,15 @@ public:
     Resource tradeOfferResource = Resource::Desert;
 
 
+
     int rollDice();
     void computeResourceProductions(const Board& board, int roll);
     void createSetupPhasePlacingOrder();
     void handleSetupClick(BoardLayout& layout, Board& board, Vector2 p);
     void handleGameClick(BoardLayout& layout, Board& board, Vector2 p, int lastRoll);
     void handleTradeClick(Vector2 o, Vector2 p);
+    void computeVictoryPoints(Board& board);
+    void computeLongestRoad(Board& board);
 
 private:
     std::mt19937 rng{std::random_device{}()};

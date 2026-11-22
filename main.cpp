@@ -79,6 +79,13 @@ int main() {
             game.tradeRequestResource = Resource::Desert;
             game.tradeOfferResource = Resource::Desert;
             game.currentPlayer = (game.currentPlayer + 1) % 4;
+            game.computeVictoryPoints(board);
+            for (int p = 0; p < 4; p++) {
+                if (game.players[p].points >= 10) {
+                    game.winningPlayer = p;
+                    goto gameOver;
+                }
+            }
             lastRoll = game.rollDice();
             game.computeResourceProductions(board, lastRoll);
             if (lastRoll == 7) {
@@ -123,7 +130,11 @@ int main() {
         for (int p = 0; p < 4; p++) {
             const Player& pl = game.players[p];
             DrawRectangle(x, y + 2, 16, 16, playerColor(p));
-            DrawText(pl.name.c_str(), x + 24, y, 20, p == game.currentPlayer ? YELLOW : RAYWHITE);
+            if (p == game.playerWithLongestRoad) {
+                DrawText(TextFormat("%s (%d) [LONGEST ROAD]", pl.name.c_str(), pl.points), x + 24, y, 20, p == game.currentPlayer ? YELLOW : RAYWHITE);
+            } else {
+                DrawText(TextFormat("%s (%d)", pl.name.c_str(), pl.points), x + 24, y, 20, p == game.currentPlayer ? YELLOW : RAYWHITE);
+            }
             y += 26;
             for (int r = 0; r < 5; r++) {
                 auto it = pl.resources.find(static_cast<Resource>(r));
@@ -137,5 +148,17 @@ int main() {
         if (game.tradeActive) DrawText("TRADING", 860, 680, 24, YELLOW);
         EndDrawing();
     }
+
+    gameOver:
+
+    while (!WindowShouldClose()) {
+        BeginDrawing();
+        ClearBackground({22, 30, 40, 255});
+        DrawText(TextFormat("%s wins!", game.players[game.winningPlayer].name.c_str()), 860, 30, 24, YELLOW);
+        DrawText("Press ESC to exit", 860, 60, 20, GRAY);
+        EndDrawing();
+    }
+
+
     CloseWindow();
 }
