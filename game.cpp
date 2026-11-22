@@ -177,19 +177,6 @@ void Game::handleTradeClick(Vector2 o, Vector2 p) {
     Player& player = players[currentPlayer];
     
     if (tradeRequestResource == Resource::Desert) {
-        // Select a resource to offer
-        if (woodAt(o, p)) {
-            tradeOfferResource = Resource::Wood;
-        } else if (brickAt(o, p)) {
-            tradeOfferResource = Resource::Brick;
-        } else if (woolAt(o, p)) {
-            tradeOfferResource = Resource::Wool;
-        } else if (grainAt(o, p)) {
-            tradeOfferResource = Resource::Grain;
-        } else if (oreAt(o, p)) {
-            tradeOfferResource = Resource::Ore;
-        }
-    } else {
         // Select a resource to request
         if (woodAt(o, p)) {
             tradeRequestResource = Resource::Wood;
@@ -199,8 +186,26 @@ void Game::handleTradeClick(Vector2 o, Vector2 p) {
             tradeRequestResource = Resource::Wool;
         } else if (grainAt(o, p)) {
             tradeRequestResource = Resource::Grain;
-        } else if (oreAt(o, p)) {       
+        } else if (oreAt(o, p)) {
             tradeRequestResource = Resource::Ore;
+        }
+    } else {
+        // Select a resource to offer
+        if (woodAt(o, p)) {
+            tradeOfferResource = Resource::Wood;
+        } else if (brickAt(o, p)) {
+            tradeOfferResource = Resource::Brick;
+        } else if (woolAt(o, p)) {
+            tradeOfferResource = Resource::Wool;
+        } else if (grainAt(o, p)) {
+            tradeOfferResource = Resource::Grain;
+        } else if (oreAt(o, p)) {       
+            tradeOfferResource = Resource::Ore;
+        }
+
+        if (player.resources[tradeOfferResource] < 4) {
+            tradeOfferResource = Resource::Desert; // Reset the offer
+            return;
         }
         player.resources[tradeOfferResource] -= 4;
         player.resources[tradeRequestResource] += 1;

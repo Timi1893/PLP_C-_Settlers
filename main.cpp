@@ -67,10 +67,17 @@ int main() {
     while (!WindowShouldClose() && game.phase == Phase::Main) {
         // ---- input ----
         if (IsKeyPressed(KEY_D))   showIndices = !showIndices;
-        if (IsKeyPressed(KEY_T)) game.tradeActive = !game.tradeActive;
+        if (IsKeyPressed(KEY_T)) {
+            game.tradeActive = !game.tradeActive;
+            game.tradeRequestResource = Resource::Desert;
+            game.tradeOfferResource = Resource::Desert;
+        }
         if (IsKeyPressed(KEY_TAB)) {
             game.robberyActive = false;
             game.robberMoved = false;
+            game.tradeActive = false;
+            game.tradeRequestResource = Resource::Desert;
+            game.tradeOfferResource = Resource::Desert;
             game.currentPlayer = (game.currentPlayer + 1) % 4;
             lastRoll = game.rollDice();
             game.computeResourceProductions(board, lastRoll);
@@ -81,7 +88,7 @@ int main() {
                     for (const auto& [res, n] : pl.resources) totalCards += n;
                     if (totalCards > 7) {
                         for (const auto& [res, n] : pl.resources) {
-                            if (n > 0) pl.resources[res] /= 2;
+                            if (n > 0) pl.resources[res] = (pl.resources[res] + 1) / 2;
                         }
                     }
                 }
@@ -100,7 +107,9 @@ int main() {
         BeginDrawing();
         ClearBackground({22, 30, 40, 255});
         drawBoard(board, layout, showIndices);
-        drawResourceButtons(resourceBtnOrigin);
+        if (game.tradeActive) {
+            drawResourceButtons(resourceBtnOrigin);
+        }
 
         // hover highlight
         Vector2 m = GetMousePosition();
