@@ -9,6 +9,7 @@ struct BoardLayout {
     float hexSize;                                   // centre-to-corner = edge length
     std::array<Vector2, NUM_TILES>   tileCenters;
     std::array<Vector2, NUM_CORNERS> corners;
+    std::array<Vector2, NUM_PORTS>   ports;     
 };
 
 BoardLayout computeLayout(Vector2 boardCenter, float hexSize);
@@ -19,6 +20,7 @@ void drawBoard(const Board& board, const BoardLayout& layout, bool showIndices);
 int cornerAt(const BoardLayout& layout, Vector2 p);
 int roadAt(const BoardLayout& layout, Vector2 p);
 int tileAt(const BoardLayout& layout, Vector2 p);
+int portAt(const BoardLayout& layout, Vector2 p);
 
 // Resource swatch row (Wood, Brick, Wool, Grain, Ore), top-left at `origin`
 void drawResourceButtons(Vector2 origin);

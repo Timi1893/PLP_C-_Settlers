@@ -2,7 +2,7 @@
 #include <array>
 #include "types.h"
 
-constexpr int NUM_TILES = 19, NUM_CORNERS = 54, NUM_ROADS = 72;
+constexpr int NUM_TILES = 19, NUM_CORNERS = 54, NUM_ROADS = 72, NUM_PORTS = 9;
 constexpr int NONE = -1;
 
 struct TileLinks { 
@@ -14,6 +14,10 @@ struct CornerLinks {
 }; 
 struct RoadLinks { 
     std::array<int, 2> corners; 
+};
+struct PortLinks {
+    std::array<int, 2> corners;   // the two coast corners the port touches
+    int tile;                     // land tile behind it (used to find "outward" for drawing)
 };
 
 inline constexpr std::array<TileLinks, NUM_TILES> TILE_LINKS = {{
@@ -170,6 +174,19 @@ inline constexpr std::array<RoadLinks, NUM_ROADS> ROAD_LINKS = {{
     {{ 47, 52 }},   // road 72: corners 48-53
 }};
 
+// Clockwise around the coast, port 1 touches corner 1. Gaps between ports: 2,2,3 roads (repeated).
+inline constexpr std::array<PortLinks, NUM_PORTS> PORT_LINKS = {{
+    {{  0,  1 },  0 },   // port 1: corners  1-2,  tile  1
+    {{  3,  4 },  1 },   // port 2: corners  4-5,  tile  2
+    {{  6,  7 },  2 },   // port 3: corners  7-8,  tile  3
+    {{ 10, 11 },  4 },   // port 4: corners 11-12, tile  5
+    {{ 13, 14 },  5 },   // port 5: corners 14-15, tile  6
+    {{ 16, 17 },  6 },   // port 6: corners 17-18, tile  7
+    {{ 20, 21 },  8 },   // port 7: corners 21-22, tile  9
+    {{ 23, 53 },  9 },   // port 8: corners 24-54, tile 10
+    {{ 25, 26 }, 10 },   // port 9: corners 26-27, tile 11
+}};
+
 struct TileState {
     Resource type = Resource::Desert;
     int number = 0;
@@ -188,6 +205,7 @@ class Board {
         std::array<TileState,   NUM_TILES>   tiles;
         std::array<CornerState, NUM_CORNERS> corners;
         std::array<RoadState,   NUM_ROADS>   roads;
+        std::array<Resource, NUM_PORTS>      ports;
         int robberTile = NONE;
 
         void generateBoardStartingState();
@@ -216,3 +234,16 @@ constexpr bool boardIsConsistent() {
     return true;
 }
 static_assert(boardIsConsistent(), "board links are inconsistent");
+
+// ---- compile-time check: both port corners share a road and touch the port's tile ----
+constexpr bool portsAreConsistent() {
+    for (const PortLinks& p : PORT_LINKS) {
+        int a = p.corners[0], b = p.corners[1];
+        bool road = false;
+        for (int r : CORNER_LINKS[a].roads)
+            if (r != NONE && contains(CORNER_LINKS[b].roads, r)) road = true;
+        if (!road || !contains(CORNER_LINKS[a].tiles, p.tile) || !contains(CORNER_LINKS[b].tiles, p.tile)) return false;
+    }
+    return true;
+}
+static_assert(portsAreConsistent(), "port links are inconsistent");

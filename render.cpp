@@ -61,6 +61,15 @@ BoardLayout computeLayout(Vector2 boardCenter, float hexSize) {
                                        c.y + CORNER_OFFSET[k].y * hexSize };
         }
     }
+
+    // Ports: push the edge midpoint outward (away from its land tile) into the water
+    for (int i = 0; i < NUM_PORTS; i++) {
+        Vector2 a = layout.corners[PORT_LINKS[i].corners[0]];
+        Vector2 b = layout.corners[PORT_LINKS[i].corners[1]];
+        Vector2 mid = Vector2Lerp(a, b, 0.5f);
+        Vector2 out = Vector2Normalize(Vector2Subtract(mid, layout.tileCenters[PORT_LINKS[i].tile]));
+        layout.ports[i] = Vector2Add(mid, Vector2Scale(out, hexSize * 0.6f));
+    }
     return layout;
 }
 
@@ -84,6 +93,19 @@ void drawBoard(const Board& board, const BoardLayout& L, bool showIndices) {
         }
         if (t == board.robberTile)
             DrawCircleV({c.x - s * 0.45f, c.y}, s * 0.16f, {40, 40, 40, 230});
+    }
+
+    // Ports
+    for (int i = 0; i < NUM_PORTS; i++) {
+        Vector2 pc = L.ports[i];
+        for (int c : PORT_LINKS[i].corners)                                    // piers to both corners
+            DrawLineEx(L.corners[c], pc, s * 0.07f, {120, 85, 50, 255});
+
+        Resource r = board.ports[i];
+        bool generic = (r == Resource::Universal);
+        DrawCircleV(pc, s * 0.28f, generic ? Color{245, 232, 200, 255} : resourceColor(r));
+        DrawCircleLinesV(pc, s * 0.28f, {60, 45, 30, 255});
+        drawCenteredText(generic ? "3:1" : "2:1", pc, (int)(s * 0.22f), BLACK);
     }
 
     // Roads
@@ -122,12 +144,16 @@ void drawBoard(const Board& board, const BoardLayout& L, bool showIndices) {
             DrawCircleLinesV(L.corners[c], 11, {60, 160, 150, 255});
             drawCenteredText(TextFormat("%d", c + 1), L.corners[c], 10, {30, 90, 85, 255});
         }
+        for (int i = 0; i < NUM_PORTS; i++){
+            drawCenteredText(TextFormat("P%d", i + 1), {L.ports[i].x, L.ports[i].y + s * 0.4f}, 14, RAYWHITE);
+        }
     }
 }
 
 int cornerAt(const BoardLayout& L, Vector2 p) {
-    for (int c = 0; c < NUM_CORNERS; c++)
+    for (int c = 0; c < NUM_CORNERS; c++) {
         if (Vector2Distance(p, L.corners[c]) < L.hexSize * 0.25f) return c;
+    }
     return NONE;
 }
 
@@ -145,13 +171,19 @@ int tileAt(const BoardLayout& L, Vector2 p) {
     return NONE;
 }
 
+int portAt(const BoardLayout& L, Vector2 p) {
+    for (int i = 0; i < NUM_PORTS; i++)
+        if (Vector2Distance(p, L.ports[i]) < L.hexSize * 0.28f) return i;
+    return NONE;
+}
+
 Color playerColor(int player) {
     static const Color colors[4] = { {220, 50, 47, 255}, {38, 110, 220, 255}, {245, 245, 245, 255}, {240, 140, 20, 255} };
     return (player >= 0 && player < 4) ? colors[player] : GRAY;
 }
 
 const char* resourceName(Resource r) {
-    static const char* names[] = {"Wood", "Brick", "Wool", "Grain", "Ore", "Desert"};
+    static const char* names[] = {"Wood", "Brick", "Wool", "Grain", "Ore", "Desert", "3:1"};
     return names[static_cast<int>(r)];
 }
 

@@ -13,5 +13,6 @@ struct Player {
         {BuildingType::City, 4},
         {BuildingType::Road, 15}
     };
+    std::vector<Resource> ports;
 };
 

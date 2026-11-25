@@ -1,6 +1,7 @@
 #include "board.h"
 #include <random>
 #include <vector>
+#include <algorithm>
 
 static std::mt19937 rng(std::random_device{}());
 
@@ -31,5 +32,11 @@ void Board::generateBoardStartingState() {
             tile_resources.erase(tile_resources.begin() + type_index);
         }
     }
+
+    std::array<Resource, NUM_PORTS> portTypes = {
+    Resource::Universal, Resource::Universal, Resource::Universal, Resource::Universal,
+    Resource::Wood, Resource::Brick, Resource::Wool, Resource::Grain, Resource::Ore };
+    std::shuffle(portTypes.begin(), portTypes.end(), rng);
+    ports = portTypes;
 }
 

@@ -213,6 +213,9 @@ void Game::handleGameClick(BoardLayout& layout, Board& board, Vector2 p, int las
             corner.owner = currentPlayer;
             corner.building = BuildingType::Settlement;
             player.buildings[BuildingType::Settlement]--;
+            if ( int port = portAt(layout, p); port != NONE) {
+                player.ports.push_back(board.ports[port]);
+            }
         }
 
         // --- upgrade to city ---
@@ -303,7 +306,12 @@ void Game::handleTradeClick(Vector2 o, Vector2 p) {
             errorMessage = "Not enough resources to offer for trade.";
             return;
         }
-        player.resources[tradeOfferResource] -= 4;
+        auto ports = player.ports;
+        if (std::find(ports.begin(), ports.end(), tradeOfferResource) != ports.end()){
+            player.resources[tradeOfferResource] -= 2;
+        } else if (std::find(ports.begin(), ports.end(), Resource::Universal) != ports.end()){
+            player.resources[tradeOfferResource] -= 3;
+        } else {player.resources[tradeOfferResource] -= 4;}
         player.resources[tradeRequestResource] += 1;
         tradeActive = false;
         return;
