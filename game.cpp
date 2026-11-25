@@ -23,6 +23,13 @@ namespace {
         }
         return best;
     }
+
+    // game.cpp, in the anonymous namespace at the top
+    int portAtCorner(int c) {
+        for (int i = 0; i < NUM_PORTS; i++)
+            if (PORT_LINKS[i].corners[0] == c || PORT_LINKS[i].corners[1] == c) return i;
+        return NONE;
+    }
 }
 
 
@@ -74,6 +81,9 @@ void Game::handleSetupClick(BoardLayout& layout, Board& board, Vector2 p) {
         board.corners[c].owner = currentPlayer;
         board.corners[c].building = BuildingType::Settlement;
         players[currentPlayer].buildings[BuildingType::Settlement]--;
+        if ( int port = portAtCorner(c); port != NONE) {
+                players[currentPlayer].ports.push_back(board.ports[port]);
+            }
         if (setupTurn >= (int)setupPlacingOrder.size()) {
             for (int t : CORNER_LINKS[c].tiles) {
                 if (t == NONE) continue;
@@ -213,7 +223,7 @@ void Game::handleGameClick(BoardLayout& layout, Board& board, Vector2 p, int las
             corner.owner = currentPlayer;
             corner.building = BuildingType::Settlement;
             player.buildings[BuildingType::Settlement]--;
-            if ( int port = portAt(layout, p); port != NONE) {
+            if ( int port = portAtCorner(c); port != NONE) {
                 player.ports.push_back(board.ports[port]);
             }
         }
@@ -300,18 +310,18 @@ void Game::handleTradeClick(Vector2 o, Vector2 p) {
             tradeOfferResource = Resource::Ore;
         }
 
-        if (player.resources[tradeOfferResource] < 4) {
-            tradeOfferResource = Resource::None; // Reset the offer
+        int rate = 4;
+        const auto& ports = player.ports;
+        if (std::find(ports.begin(), ports.end(), Resource::Universal) != ports.end()) rate = 3;
+        if (std::find(ports.begin(), ports.end(), tradeOfferResource) != ports.end()) rate = 2;
+
+        if (player.resources[tradeOfferResource] < rate) {
+            tradeOfferResource = Resource::None;
             showError = true;
             errorMessage = "Not enough resources to offer for trade.";
             return;
         }
-        auto ports = player.ports;
-        if (std::find(ports.begin(), ports.end(), tradeOfferResource) != ports.end()){
-            player.resources[tradeOfferResource] -= 2;
-        } else if (std::find(ports.begin(), ports.end(), Resource::Universal) != ports.end()){
-            player.resources[tradeOfferResource] -= 3;
-        } else {player.resources[tradeOfferResource] -= 4;}
+        player.resources[tradeOfferResource] -= rate;
         player.resources[tradeRequestResource] += 1;
         tradeActive = false;
         return;
