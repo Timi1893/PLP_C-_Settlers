@@ -43,6 +43,17 @@ void drawCenteredText(const char* text, Vector2 pos, int fontSize, Color color) 
     DrawText(text, (int)(pos.x - w / 2.f), (int)(pos.y - fontSize / 2.f), fontSize, color);
 }
 
+// ---- side panel layout (shared by drawing and playerAt) ----
+constexpr int PANEL_X = 860, PANEL_Y = 30, PANEL_W = 280;
+constexpr int HEADER_H = 50;                     // "Last roll" / "Setup turn" line
+constexpr int SETUP_ROW_H = 26;                  // setup: name only
+constexpr int GAME_BLOCK_H = 26 + 5 * 18 + 14;   // game: name + 5 resources + gap
+
+Rectangle playerBlockRect(int p) {
+    return { (float)PANEL_X - 6, (float)(PANEL_Y + HEADER_H + p * GAME_BLOCK_H) - 4,
+             (float)PANEL_W, (float)GAME_BLOCK_H - 6 };
+}
+
 } // namespace
 
 BoardLayout computeLayout(Vector2 boardCenter, float hexSize) {
@@ -204,3 +215,42 @@ bool brickAt(Vector2 o, Vector2 p) { return CheckCollisionPointRec(p, resourceBu
 bool woolAt (Vector2 o, Vector2 p) { return CheckCollisionPointRec(p, resourceButtonRect(o, Resource::Wool));  }
 bool grainAt(Vector2 o, Vector2 p) { return CheckCollisionPointRec(p, resourceButtonRect(o, Resource::Grain)); }
 bool oreAt  (Vector2 o, Vector2 p) { return CheckCollisionPointRec(p, resourceButtonRect(o, Resource::Ore));   }
+
+void drawSetupSideboard(const Game& game) {
+    int x = PANEL_X, y = PANEL_Y;
+    DrawText(TextFormat("Setup turn: %d", game.setupTurn), x, y, 24, RAYWHITE); y += HEADER_H;
+    for (int p = 0; p < 4; p++) {
+        const Player& pl = game.players[p];
+        DrawRectangle(x, y + 2, 16, 16, playerColor(p));
+        DrawText(pl.name.c_str(), x + 24, y, 20, p == game.currentPlayer ? YELLOW : RAYWHITE);
+        y += SETUP_ROW_H;
+    }
+}
+
+void drawGameSideboard(const Game& game, int lastRoll) {
+    int x = PANEL_X, y = PANEL_Y;
+    DrawText(TextFormat("Last roll: %d", lastRoll), x, y, 24, RAYWHITE); y += HEADER_H;
+    for (int p = 0; p < 4; p++) {
+        const Player& pl = game.players[p];
+        Color nameColor = p == game.currentPlayer ? YELLOW : RAYWHITE;
+        DrawRectangle(x, y + 2, 16, 16, playerColor(p));
+        if (p == game.playerWithLongestRoad)
+            DrawText(TextFormat("%s (%d) [LONGEST ROAD]", pl.name.c_str(), pl.points), x + 24, y, 20, nameColor);
+        else
+            DrawText(TextFormat("%s (%d)", pl.name.c_str(), pl.points), x + 24, y, 20, nameColor);
+        y += 26;
+        for (int r = 0; r < 5; r++) {
+            auto it = pl.resources.find(static_cast<Resource>(r));
+            int n = it == pl.resources.end() ? 0 : it->second;
+            DrawText(TextFormat("%s: %d", resourceName(static_cast<Resource>(r)), n), x + 24, y, 16, LIGHTGRAY);
+            y += 18;
+        }
+        y += 14;
+    }
+}
+
+int playerAt(Vector2 p) {
+    for (int i = 0; i < 4; i++)
+        if (CheckCollisionPointRec(p, playerBlockRect(i))) return i;
+    return NONE;
+}

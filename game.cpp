@@ -282,8 +282,19 @@ void Game::handleGameClick(BoardLayout& layout, Board& board, Vector2 p, int las
 
 void Game::handleTradeClick(Vector2 o, Vector2 p) {
     Player& player = players[currentPlayer];
-    
-    if (tradeRequestResource == Resource::None) {
+
+    if (int target = playerAt(p); target != NONE && target != currentPlayer) {
+        if (target == tradeTargetPlayer) {
+            playerTrade = false;
+            tradeTargetPlayer = -1;
+        }
+        else {
+            playerTrade = true;
+            tradeTargetPlayer = target;
+        }
+        return;
+    } 
+    else if (tradeRequestResource == Resource::None) {
         // Select a resource to request
         if (woodAt(o, p)) {
             tradeRequestResource = Resource::Wood;
@@ -308,6 +319,20 @@ void Game::handleTradeClick(Vector2 o, Vector2 p) {
             tradeOfferResource = Resource::Grain;
         } else if (oreAt(o, p)) {       
             tradeOfferResource = Resource::Ore;
+        }
+
+        if (playerTrade) {
+            if (player.resources[tradeOfferResource] < 1) {
+                tradeOfferResource = Resource::None;
+                showError = true;
+                errorMessage = "Not enough resources to offer for trade.";
+                return;
+            }
+            players[tradeTargetPlayer].resources[tradeRequestResource] -= 1;
+            players[tradeTargetPlayer].resources[tradeOfferResource] += 1;
+            player.resources[tradeOfferResource] -= 1;
+            player.resources[tradeRequestResource] += 1;
+            return;
         }
 
         int rate = 4;

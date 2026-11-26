@@ -50,15 +50,7 @@ int main() {
         else if (int r = roadAt(layout, m); r != NONE)
             DrawLineEx(layout.corners[ROAD_LINKS[r].corners[0]], layout.corners[ROAD_LINKS[r].corners[1]], 4, YELLOW);
 
-        // side panel
-        int x = 860, y = 30;
-        DrawText(TextFormat("Setup turn: %d", game.setupTurn), x, y, 24, RAYWHITE); y += 50;
-        for (int p = 0; p < 4; p++) {
-            const Player& pl = game.players[p];
-            DrawRectangle(x, y + 2, 16, 16, playerColor(p));
-            DrawText(pl.name.c_str(), x + 24, y, 20, p == game.currentPlayer ? YELLOW : RAYWHITE);
-            y += 26;
-        }
+        drawSetupSideboard(game);
         DrawText("D indices", 20, screenH - 30, 18, GRAY);
         if (game.showError) {
             int btn = -1;
@@ -76,15 +68,19 @@ int main() {
         if (IsKeyPressed(KEY_D))   showIndices = !showIndices;
         if (IsKeyPressed(KEY_T)) {
             game.tradeActive = !game.tradeActive;
-            game.tradeRequestResource = Resource::Desert;
-            game.tradeOfferResource = Resource::Desert;
+            game.playerTrade = false;
+            game.tradeTargetPlayer = -1;
+            game.tradeRequestResource = Resource::None;
+            game.tradeOfferResource = Resource::None;
         }
         if (IsKeyPressed(KEY_TAB)) {
             game.robberyActive = false;
             game.robberMoved = false;
             game.tradeActive = false;
-            game.tradeRequestResource = Resource::Desert;
-            game.tradeOfferResource = Resource::Desert;
+            game.playerTrade = false;
+            game.tradeTargetPlayer = -1;
+            game.tradeRequestResource = Resource::None;
+            game.tradeOfferResource = Resource::None;
             game.currentPlayer = (game.currentPlayer + 1) % 4;
             game.computeLongestRoad(board);
             game.computeVictoryPoints(board);
@@ -132,28 +128,10 @@ int main() {
         else if (int r = roadAt(layout, m); r != NONE)
             DrawLineEx(layout.corners[ROAD_LINKS[r].corners[0]], layout.corners[ROAD_LINKS[r].corners[1]], 4, YELLOW);
 
-        // side panel
-        int x = 860, y = 30;
-        DrawText(TextFormat("Last roll: %d", lastRoll), x, y, 24, RAYWHITE); y += 50;
-        for (int p = 0; p < 4; p++) {
-            const Player& pl = game.players[p];
-            DrawRectangle(x, y + 2, 16, 16, playerColor(p));
-            if (p == game.playerWithLongestRoad) {
-                DrawText(TextFormat("%s (%d) [LONGEST ROAD]", pl.name.c_str(), pl.points), x + 24, y, 20, p == game.currentPlayer ? YELLOW : RAYWHITE);
-            } else {
-                DrawText(TextFormat("%s (%d)", pl.name.c_str(), pl.points), x + 24, y, 20, p == game.currentPlayer ? YELLOW : RAYWHITE);
-            }
-            y += 26;
-            for (int r = 0; r < 5; r++) {
-                auto it = pl.resources.find(static_cast<Resource>(r));
-                int n = it == pl.resources.end() ? 0 : it->second;
-                DrawText(TextFormat("%s: %d", resourceName(static_cast<Resource>(r)), n), x + 24, y, 16, LIGHTGRAY);
-                y += 18;
-            }
-            y += 14;
-        }
+        drawGameSideboard(game, lastRoll);
         DrawText("TAB end move  T trade  D indices", 20, screenH - 30, 18, GRAY);
-        if (game.tradeActive) DrawText("TRADING", 860, 680, 24, YELLOW);
+        if (game.tradeActive && game.playerTrade) DrawText("TRADING WITH PLAYER", 860, 680, 24, YELLOW);
+        else if (game.tradeActive) DrawText("TRADING", 860, 680, 24, YELLOW);
         if (game.showError) {
             int btn = -1;
             if (GuiMessageBox({375, 330, 400, 140}, "Error", game.errorMessage.c_str(), "OK", &btn) == RESULT_PRESSED)

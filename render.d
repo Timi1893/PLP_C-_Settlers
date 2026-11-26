@@ -1,4 +1,6 @@
-render.o: render.cpp render.h board.h types.h
+render.o: render.cpp render.h board.h types.h game.h player.h
 render.h:
 board.h:
 types.h:
+game.h:
+player.h:

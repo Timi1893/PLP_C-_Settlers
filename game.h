@@ -27,6 +27,8 @@ public:
     bool robberyActive = false;
     bool robberMoved = false;
     bool tradeActive = false;
+    bool playerTrade = false;
+    int tradeTargetPlayer = -1;
 
     bool showError = false; 
     std::string errorMessage;
